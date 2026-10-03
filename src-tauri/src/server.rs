@@ -538,3 +538,79 @@ fn percent_decode(s: &str) -> String {
     }
     String::from_utf8_lossy(&bytes).into_owned()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── pure helpers ──
+
+    #[test]
+    fn html_escape_escapes_special_chars() {
+        assert_eq!(html_escape("<b>&\"x\"</b>"), "&lt;b&gt;&amp;&quot;x&quot;&lt;/b&gt;");
+        assert_eq!(html_escape("plain name.txt"), "plain name.txt");
+    }
+
+    #[test]
+    fn format_size_scales_units() {
+        assert_eq!(format_size(512), "512 B");
+        assert!(format_size(2048).contains("KB"), "{}", format_size(2048));
+        assert!(format_size(5 * 1024 * 1024).contains("MB"));
+        assert!(format_size(3 * 1024 * 1024 * 1024).contains("GB"));
+    }
+
+    #[test]
+    fn percent_decode_handles_encodings_and_garbage() {
+        assert_eq!(percent_decode("a%20b"), "a b");
+        assert_eq!(percent_decode("a+b"), "a b");
+        assert_eq!(percent_decode("%41"), "A");
+        // A trailing '%' with no hex digits follows is consumed (not echoed).
+        assert_eq!(percent_decode("100%"), "100");
+        // A '%' followed by non-hex digits consumes the bad escape without panicking.
+        assert_eq!(percent_decode("%ZZ"), "");
+        assert_eq!(percent_decode("ab%"), "ab");
+    }
+
+    #[test]
+    fn mime_guess_by_extension_case_insensitive() {
+        assert_eq!(mime_guess(Path::new("a.png")), "image/png");
+        assert!(mime_guess(Path::new("a.PDF")).contains("pdf"));
+        assert!(mime_guess(Path::new("a.html")).contains("text/html"));
+        assert_eq!(mime_guess(Path::new("noext")), "application/octet-stream");
+    }
+
+    #[test]
+    fn find_bytes_finds_or_absent() {
+        assert_eq!(find_bytes(b"hello world", b"wo"), Some(6));
+        assert_eq!(find_bytes(b"aaaa", b"aa"), Some(0));
+        assert_eq!(find_bytes(b"aaa", b"zz"), None);
+    }
+
+    // ── multipart security: upload filename must collapse to basename ──
+
+    #[test]
+    fn multipart_filename_strips_any_directory() {
+        // A malicious browser/client may send a path in filename="".
+        // The server must keep only the basename to avoid writing outside the folder.
+        let body = b"--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"../../../evil.exe\"\r\n\r\nDATA\r\n--B--\r\n";
+        assert_eq!(extract_multipart_filename(body, "B").unwrap(), "evil.exe");
+
+        let body_win = b"--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"C:\\tmp\\sub\\doc.txt\"\r\n\r\nDATA\r\n--B--\r\n";
+        assert_eq!(extract_multipart_filename(body_win, "B").unwrap(), "doc.txt");
+    }
+
+    #[test]
+    fn multipart_extracts_payload_between_boundaries() {
+        let body = b"headers\r\n\r\nHELLO_PAYLOAD\r\n--B\r\n";
+        assert_eq!(extract_multipart_data(body, "B").unwrap(), b"HELLO_PAYLOAD");
+        assert!(extract_multipart_data(b"no-boundary-marker", "B").is_none());
+    }
+
+    #[test]
+    fn server_state_defaults() {
+        let s = ServerState::new(9999);
+        assert!(s.folders.is_empty());
+        assert!(s.password.is_none());
+        assert!(!s.active);
+    }
+}

@@ -1,4 +1,6 @@
-mod server;
+// `pub` so the integration tests in ../tests/ can drive the real HTTP server.
+// No runtime behavior change.
+pub mod server;
 
 use server::{ServerState, SharedFolder};
 use std::path::PathBuf;
