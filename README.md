@@ -33,3 +33,15 @@ npm run tauri build    # 或直接用 Inno Setup 编译 installer.iss
 - Vite + TypeScript
 - tiny_http (内嵌 HTTP 服务器)
 - 果绿色 #A8E6CF 主题
+
+---
+
+<div align="center">
+
+<a href="https://github.com/yxpil/PILPublisher">
+  <img width="100%" src="https://alittlecatgirlpanel.yxp.hk/card?repo=yxpil/PILPublisher" alt="gh-card · yxpil/PILPublisher" />
+</a>
+
+<sub>Powered by <a href="https://alittlecatgirlpanel.yxp.hk"><b>gh-card</b></a> · 粉色手写体 README 仓库名片</sub>
+
+</div>
